@@ -1,166 +1,197 @@
 
 import { useState } from "react";
+import { Plus, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Person } from "@/types/person";
 import { Expense } from "@/types/expense";
 
 interface ExpenseFormProps {
-  onSubmit: (expense: Omit<Expense, 'id' | 'date'>) => void;
-  onCancel: () => void;
+  people: Person[];
+  onAddExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
 }
 
 const categories = [
-  "Alimentação",
-  "Transporte", 
-  "Hospedagem",
-  "Entretenimento",
-  "Compras",
-  "Outros"
+  { value: "comida", label: "🍽️ Comida", suggestions: ["Jantar", "Almoço", "Lanche", "Pizza", "Hambúrguer"] },
+  { value: "bebida", label: "🍺 Bebida", suggestions: ["Cerveja", "Refrigerante", "Água", "Drink", "Vinho"] },
+  { value: "transporte", label: "🚗 Transporte", suggestions: ["Uber", "Táxi", "Gasolina", "Estacionamento", "Pedágio"] },
+  { value: "hospedagem", label: "🏨 Hospedagem", suggestions: ["Hotel", "Pousada", "Airbnb", "Resort"] },
+  { value: "outros", label: "📦 Outros", suggestions: ["Compras", "Farmácia", "Supermercado", "Presente"] }
 ];
 
-const defaultPeople = ["Você", "Ana", "Bruno", "Carlos", "Diana"];
-
-export const ExpenseForm = ({ onSubmit, onCancel }: ExpenseFormProps) => {
-  const [title, setTitle] = useState("");
+export const ExpenseForm = ({ people, onAddExpense }: ExpenseFormProps) => {
+  const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [paidBy, setPaidBy] = useState("");
-  const [splitBetween, setSplitBetween] = useState<string[]>([]);
   const [category, setCategory] = useState("");
-  const [description, setDescription] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const formatCurrency = (value: string) => {
+    const numericValue = value.replace(/[^\d,.-]/g, '').replace(',', '.');
+    const number = parseFloat(numericValue);
+    return isNaN(number) ? '' : number.toString();
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatCurrency(value);
+    setAmount(formatted);
+  };
+
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    if (!description.trim() || description.trim().length < 3) {
+      newErrors.description = "Descrição deve ter pelo menos 3 caracteres";
+    }
+    
+    const numericAmount = parseFloat(amount);
+    if (!amount || isNaN(numericAmount) || numericAmount <= 0.01) {
+      newErrors.amount = "Valor deve ser maior que R$ 0,01";
+    }
+    
+    if (!paidBy) {
+      newErrors.paidBy = "Selecione quem pagou";
+    }
+    
+    if (!category) {
+      newErrors.category = "Selecione uma categoria";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title || !amount || !paidBy || splitBetween.length === 0 || !category) {
-      return;
-    }
-
-    onSubmit({
-      title,
+    if (!validateForm()) return;
+    
+    onAddExpense({
+      description: description.trim(),
       amount: parseFloat(amount),
       paidBy,
-      splitBetween,
-      category,
-      description,
+      category
     });
-
+    
     // Reset form
-    setTitle("");
+    setDescription("");
     setAmount("");
     setPaidBy("");
-    setSplitBetween([]);
     setCategory("");
-    setDescription("");
+    setErrors({});
+    setShowSuggestions(false);
   };
 
-  const togglePerson = (person: string) => {
-    setSplitBetween(prev => 
-      prev.includes(person) 
-        ? prev.filter(p => p !== person)
-        : [...prev, person]
-    );
+  const handleSuggestionClick = (suggestion: string) => {
+    setDescription(suggestion);
+    setShowSuggestions(false);
   };
+
+  const selectedCategory = categories.find(cat => cat.value === category);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="title">Descrição da Despesa</Label>
-        <Input
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ex: Jantar no restaurante"
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="amount">Valor (R$)</Label>
-        <Input
-          id="amount"
-          type="number"
-          step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="0,00"
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="category">Categoria</Label>
-        <Select value={category} onValueChange={setCategory} required>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione uma categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label htmlFor="paidBy">Pago por</Label>
-        <Select value={paidBy} onValueChange={setPaidBy} required>
-          <SelectTrigger>
-            <SelectValue placeholder="Quem pagou?" />
-          </SelectTrigger>
-          <SelectContent>
-            {defaultPeople.map((person) => (
-              <SelectItem key={person} value={person}>
-                {person}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label>Dividir entre:</Label>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          {defaultPeople.map((person) => (
-            <button
-              key={person}
-              type="button"
-              onClick={() => togglePerson(person)}
-              className={`p-2 rounded-lg border text-sm transition-all ${
-                splitBetween.includes(person)
-                  ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                  : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {person}
-            </button>
-          ))}
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Adicionar Novo Gasto</h3>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Label htmlFor="category">Categoria</Label>
+          <Select value={category} onValueChange={(value) => {
+            setCategory(value);
+            setShowSuggestions(true);
+          }}>
+            <SelectTrigger className={errors.category ? "border-red-500" : ""}>
+              <SelectValue placeholder="Selecione uma categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
         </div>
-      </div>
 
-      <div>
-        <Label htmlFor="description">Observações (opcional)</Label>
-        <Textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Detalhes adicionais..."
-          rows={2}
-        />
-      </div>
+        <div>
+          <Label htmlFor="description">Descrição do Gasto</Label>
+          <Input
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ex: João, Maria, Carlos..."
+            className={errors.description ? "border-red-500" : ""}
+          />
+          {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+          
+          {showSuggestions && selectedCategory && (
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-gray-500">Sugestões:</p>
+              <div className="flex flex-wrap gap-1">
+                {selectedCategory.suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
-      <div className="flex gap-3 pt-4">
-        <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-          Adicionar Despesa
+        <div>
+          <Label htmlFor="amount">Valor (R$)</Label>
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              id="amount"
+              type="text"
+              value={amount}
+              onChange={handleAmountChange}
+              placeholder="0,00"
+              className={`pl-10 ${errors.amount ? "border-red-500" : ""}`}
+            />
+          </div>
+          {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
+        </div>
+
+        <div>
+          <Label htmlFor="paidBy">Quem Pagou?</Label>
+          <Select value={paidBy} onValueChange={setPaidBy}>
+            <SelectTrigger className={errors.paidBy ? "border-red-500" : ""}>
+              <SelectValue placeholder="Selecione quem pagou" />
+            </SelectTrigger>
+            <SelectContent>
+              {people.map((person) => (
+                <SelectItem key={person.id} value={person.name}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full ${person.color}`}></div>
+                    {person.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.paidBy && <p className="text-red-500 text-sm mt-1">{errors.paidBy}</p>}
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full bg-green-500 hover:bg-green-600"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar Gasto
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 };
