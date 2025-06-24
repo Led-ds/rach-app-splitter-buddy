@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Navigation } from "@/components/Navigation";
@@ -9,21 +10,40 @@ import { PeopleManagement } from "@/components/PeopleManagement";
 import { ExpenseManagement } from "@/components/ExpenseManagement";
 import { ExpenseDivision } from "@/components/ExpenseDivision";
 import { FinalResult } from "@/components/FinalResult";
+import { TemplateSelector } from "@/components/TemplateSelector";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Person } from "@/types/person";
 import { Expense } from "@/types/expense";
+import { SplitHistory, SplitTemplate } from "@/types/history";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
-type FlowStep = 'welcome' | 'people' | 'expenses' | 'division' | 'result';
+type FlowStep = 'welcome' | 'template' | 'people' | 'expenses' | 'division' | 'result';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<'novo' | 'historico'>('novo');
   const [currentStep, setCurrentStep] = useState<FlowStep>('welcome');
   const [people, setPeople] = useState<Person[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<SplitTemplate | null>(null);
+  const [history, setHistory] = useLocalStorage<SplitHistory[]>('split-history', []);
+  const { toast } = useToast();
 
   const handleStartNewSplit = () => {
-    setCurrentStep('people');
+    setCurrentStep('template');
     console.log("Iniciando fluxo do split...");
+  };
+
+  const handleTemplateSelected = (template: SplitTemplate) => {
+    setSelectedTemplate(template);
+    setCurrentStep('people');
+    console.log("Template selecionado:", template);
+  };
+
+  const handleStartFromScratch = () => {
+    setSelectedTemplate(null);
+    setCurrentStep('people');
+    console.log("Começando do zero...");
   };
 
   const handlePeopleContinue = (selectedPeople: Person[]) => {
@@ -41,6 +61,11 @@ const Index = () => {
   const handleBackToWelcome = () => {
     setCurrentStep('welcome');
     setPeople([]);
+    setSelectedTemplate(null);
+  };
+
+  const handleBackToTemplate = () => {
+    setCurrentStep('template');
   };
 
   const handleBackToPeople = () => {
@@ -57,6 +82,7 @@ const Index = () => {
       setCurrentStep('welcome');
       setPeople([]);
       setExpenses([]);
+      setSelectedTemplate(null);
     }
   };
 
@@ -71,25 +97,80 @@ const Index = () => {
   };
 
   const handleSaveToHistory = () => {
-    // TODO: Implement history saving
-    console.log("Salvando no histórico...");
+    const newSplit: SplitHistory = {
+      id: crypto.randomUUID(),
+      name: selectedTemplate?.name || `Split ${new Date().toLocaleDateString('pt-BR')}`,
+      date: new Date().toISOString(),
+      people,
+      expenses,
+      totalAmount: expenses.reduce((sum, expense) => sum + expense.amount, 0),
+      status: 'completed',
+      template: selectedTemplate?.id
+    };
+
+    setHistory(prev => [newSplit, ...prev]);
+    
+    toast({
+      title: "Split salvo!",
+      description: "Seu split foi salvo no histórico com sucesso.",
+    });
+
+    console.log("Salvando no histórico:", newSplit);
   };
 
   const handleNewSplit = () => {
     setCurrentStep('welcome');
     setPeople([]);
     setExpenses([]);
+    setSelectedTemplate(null);
+  };
+
+  const handleUseAgain = (split: SplitHistory) => {
+    setPeople(split.people);
+    setExpenses(split.expenses.map(expense => ({
+      ...expense,
+      id: crypto.randomUUID(), // Generate new IDs
+      splitBetween: undefined,
+      splitType: 'equal',
+      splitData: undefined
+    })));
+    setSelectedTemplate(split.template ? {
+      id: split.template,
+      name: split.name,
+      description: '',
+      icon: split.template === 'churrasco' ? '🍖' : 
+           split.template === 'viagem' ? '✈️' :
+           split.template === 'restaurante' ? '🍽️' :
+           split.template === 'balada' ? '🎉' : '💰',
+      defaultExpenses: []
+    } : null);
+    
+    setActiveTab('novo');
+    setCurrentStep('expenses');
+    
+    toast({
+      title: "Split carregado!",
+      description: "As pessoas e gastos foram carregados do histórico.",
+    });
   };
 
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 'welcome':
         return <WelcomeScreen onStartNewSplit={handleStartNewSplit} />;
+      case 'template':
+        return (
+          <TemplateSelector
+            onSelectTemplate={handleTemplateSelected}
+            onStartFromScratch={handleStartFromScratch}
+          />
+        );
       case 'people':
         return (
           <PeopleManagement 
             onContinue={handlePeopleContinue}
-            onBack={handleBackToWelcome}
+            onBack={selectedTemplate ? handleBackToTemplate : handleBackToWelcome}
+            template={selectedTemplate}
           />
         );
       case 'expenses':
@@ -98,6 +179,7 @@ const Index = () => {
             people={people}
             onBack={handleBackToPeople}
             onContinue={handleExpensesContinue}
+            template={selectedTemplate}
           />
         );
       case 'division':
@@ -130,7 +212,7 @@ const Index = () => {
       <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       
       <MainContent>
-        {activeTab === 'novo' ? renderCurrentStep() : <HistoryScreen />}
+        {activeTab === 'novo' ? renderCurrentStep() : <HistoryScreen onUseAgain={handleUseAgain} />}
       </MainContent>
       
       <Footer />
