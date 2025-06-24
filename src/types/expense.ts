@@ -6,4 +6,7 @@ export interface Expense {
   paidBy: string;
   category: string;
   date: string;
+  splitBetween?: string[];
+  splitType?: 'equal' | 'custom' | 'percentage';
+  splitData?: { [personName: string]: number };
 }

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Navigation } from "@/components/Navigation";
@@ -7,6 +8,7 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { HistoryScreen } from "@/components/HistoryScreen";
 import { PeopleManagement } from "@/components/PeopleManagement";
 import { ExpenseManagement } from "@/components/ExpenseManagement";
+import { Button } from "@/components/ui/button";
 import { Person } from "@/types/person";
 import { Expense } from "@/types/expense";
 
