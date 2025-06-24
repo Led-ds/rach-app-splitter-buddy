@@ -6,21 +6,65 @@ import { MainContent } from "@/components/MainContent";
 import { Footer } from "@/components/Footer";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { HistoryScreen } from "@/components/HistoryScreen";
+import { PeopleManagement } from "@/components/PeopleManagement";
+import { ExpenseManagement } from "@/components/ExpenseManagement";
+import { Person } from "@/types/person";
+
+type FlowStep = 'welcome' | 'people' | 'expenses' | 'division' | 'result';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<'novo' | 'historico'>('novo');
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [currentStep, setCurrentStep] = useState<FlowStep>('welcome');
+  const [people, setPeople] = useState<Person[]>([]);
 
   const handleStartNewSplit = () => {
-    setShowWelcome(false);
-    // Aqui será implementado o fluxo de criação de split nos próximos módulos
-    console.log("Iniciando novo split...");
+    setCurrentStep('people');
+    console.log("Iniciando fluxo do split...");
+  };
+
+  const handlePeopleContinue = (selectedPeople: Person[]) => {
+    setPeople(selectedPeople);
+    setCurrentStep('expenses');
+    console.log("Pessoas selecionadas:", selectedPeople);
+  };
+
+  const handleBackToWelcome = () => {
+    setCurrentStep('welcome');
+    setPeople([]);
+  };
+
+  const handleBackToPeople = () => {
+    setCurrentStep('people');
   };
 
   const handleTabChange = (tab: 'novo' | 'historico') => {
     setActiveTab(tab);
     if (tab === 'novo') {
-      setShowWelcome(true);
+      setCurrentStep('welcome');
+      setPeople([]);
+    }
+  };
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 'welcome':
+        return <WelcomeScreen onStartNewSplit={handleStartNewSplit} />;
+      case 'people':
+        return (
+          <PeopleManagement 
+            onContinue={handlePeopleContinue}
+            onBack={handleBackToWelcome}
+          />
+        );
+      case 'expenses':
+        return (
+          <ExpenseManagement 
+            people={people}
+            onBack={handleBackToPeople}
+          />
+        );
+      default:
+        return <WelcomeScreen onStartNewSplit={handleStartNewSplit} />;
     }
   };
 
@@ -30,22 +74,7 @@ const Index = () => {
       <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       
       <MainContent>
-        {activeTab === 'novo' ? (
-          showWelcome ? (
-            <WelcomeScreen onStartNewSplit={handleStartNewSplit} />
-          ) : (
-            <div className="bg-white rounded-xl p-8 text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Em breve...
-              </h3>
-              <p className="text-gray-600">
-                O módulo de criação de split será implementado nos próximos passos.
-              </p>
-            </div>
-          )
-        ) : (
-          <HistoryScreen />
-        )}
+        {activeTab === 'novo' ? renderCurrentStep() : <HistoryScreen />}
       </MainContent>
       
       <Footer />
