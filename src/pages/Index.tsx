@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Navigation } from "@/components/Navigation";
@@ -8,6 +7,8 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { HistoryScreen } from "@/components/HistoryScreen";
 import { PeopleManagement } from "@/components/PeopleManagement";
 import { ExpenseManagement } from "@/components/ExpenseManagement";
+import { ExpenseDivision } from "@/components/ExpenseDivision";
+import { FinalResult } from "@/components/FinalResult";
 import { Button } from "@/components/ui/button";
 import { Person } from "@/types/person";
 import { Expense } from "@/types/expense";
@@ -59,6 +60,27 @@ const Index = () => {
     }
   };
 
+  const handleDivisionContinue = (finalExpenses: Expense[]) => {
+    setExpenses(finalExpenses);
+    setCurrentStep('result');
+    console.log("Divisão finalizada:", finalExpenses);
+  };
+
+  const handleBackToDivision = () => {
+    setCurrentStep('division');
+  };
+
+  const handleSaveToHistory = () => {
+    // TODO: Implement history saving
+    console.log("Salvando no histórico...");
+  };
+
+  const handleNewSplit = () => {
+    setCurrentStep('welcome');
+    setPeople([]);
+    setExpenses([]);
+  };
+
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 'welcome':
@@ -80,13 +102,22 @@ const Index = () => {
         );
       case 'division':
         return (
-          <div className="text-center py-8">
-            <h2 className="text-2xl font-bold mb-4">Módulo de Divisão</h2>
-            <p className="text-gray-600 mb-4">Em breve: divisão inteligente dos gastos</p>
-            <Button onClick={handleBackToExpenses} variant="outline">
-              Voltar aos Gastos
-            </Button>
-          </div>
+          <ExpenseDivision
+            people={people}
+            expenses={expenses}
+            onBack={handleBackToExpenses}
+            onContinue={handleDivisionContinue}
+          />
+        );
+      case 'result':
+        return (
+          <FinalResult
+            people={people}
+            expenses={expenses}
+            onBack={handleBackToDivision}
+            onNewSplit={handleNewSplit}
+            onSaveToHistory={handleSaveToHistory}
+          />
         );
       default:
         return <WelcomeScreen onStartNewSplit={handleStartNewSplit} />;
