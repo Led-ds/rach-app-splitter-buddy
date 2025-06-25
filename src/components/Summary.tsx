@@ -3,23 +3,29 @@ import { TrendingUp, DollarSign, Users, PieChart } from "lucide-react";
 import { Expense } from "@/types/expense";
 
 interface SummaryProps {
-  expenses: Expense[];
+  expenses: Expense[];  // Lista de gastos para gerar o resumo
 }
 
+/**
+ * Componente Summary - Exibe estatísticas resumidas dos gastos
+ * Mostra cards com total gasto, número de despesas, média e participantes
+ */
 export const Summary = ({ expenses }: SummaryProps) => {
+  // Cálculos das estatísticas principais
   const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalExpenses = expenses.length;
   const averagePerExpense = totalExpenses > 0 ? totalAmount / totalExpenses : 0;
 
-  // Calculate who owes what (simplified version)
+  // Cálculo simplificado de quem deve o quê
+  // TODO: Melhorar este cálculo na versão futura
   const balances = expenses.reduce((acc, expense) => {
     const amountPerPerson = expense.amount / expense.splitBetween.length;
     
-    // Person who paid gets credited
+    // Pessoa que pagou recebe crédito
     if (!acc[expense.paidBy]) acc[expense.paidBy] = 0;
     acc[expense.paidBy] += expense.amount;
     
-    // Everyone who should split gets debited
+    // Todos que devem dividir são debitados
     expense.splitBetween.forEach(person => {
       if (!acc[person]) acc[person] = 0;
       acc[person] -= amountPerPerson;
@@ -28,6 +34,7 @@ export const Summary = ({ expenses }: SummaryProps) => {
     return acc;
   }, {} as Record<string, number>);
 
+  // Formatação de moeda brasileira
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -37,6 +44,7 @@ export const Summary = ({ expenses }: SummaryProps) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Card: Total Gasto */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between">
           <div>
@@ -49,6 +57,7 @@ export const Summary = ({ expenses }: SummaryProps) => {
         </div>
       </div>
 
+      {/* Card: Número de Despesas */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between">
           <div>
@@ -61,6 +70,7 @@ export const Summary = ({ expenses }: SummaryProps) => {
         </div>
       </div>
 
+      {/* Card: Média por Despesa */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between">
           <div>
@@ -73,6 +83,7 @@ export const Summary = ({ expenses }: SummaryProps) => {
         </div>
       </div>
 
+      {/* Card: Número de Participantes */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between">
           <div>
