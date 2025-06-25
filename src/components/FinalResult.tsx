@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ArrowLeft, Share2, Save, Plus, Check, Copy, MessageCircle, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Person } from "@/types/person";
 import { Expense } from "@/types/expense";
 import { Summary } from "./Summary";
+import { Loading } from "@/components/ui/loading";
 
 interface FinalResultProps {
   people: Person[];
@@ -15,6 +15,7 @@ interface FinalResultProps {
   onBack: () => void;
   onNewSplit: () => void;
   onSaveToHistory: () => void;
+  loading?: boolean;
 }
 
 interface PersonBalance {
@@ -33,7 +34,14 @@ interface Transfer {
   isPaid: boolean;
 }
 
-export const FinalResult = ({ people, expenses, onBack, onNewSplit, onSaveToHistory }: FinalResultProps) => {
+export const FinalResult = ({ 
+  people, 
+  expenses, 
+  onBack, 
+  onNewSplit, 
+  onSaveToHistory,
+  loading = false 
+}: FinalResultProps) => {
   const [transfers, setTransfers] = useState<Transfer[]>(() => calculateTransfers());
   const [expandedPerson, setExpandedPerson] = useState<string | null>(null);
 
@@ -169,9 +177,7 @@ export const FinalResult = ({ people, expenses, onBack, onNewSplit, onSaveToHist
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Resultado Final</h2>
-        <p className="text-gray-600">
-          Veja como ficou a divisão e os acertos necessários
-        </p>
+        <p className="text-gray-600">Aqui está como ficou a divisão dos gastos</p>
       </div>
 
       {/* Summary Cards */}
@@ -281,7 +287,7 @@ export const FinalResult = ({ people, expenses, onBack, onNewSplit, onSaveToHist
       )}
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex gap-3">
         <Button
           variant="outline"
           onClick={copyToClipboard}
@@ -305,23 +311,33 @@ export const FinalResult = ({ people, expenses, onBack, onNewSplit, onSaveToHist
           variant="outline"
           onClick={onBack}
           className="flex-1"
+          disabled={loading}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar à Divisão
+          Voltar
         </Button>
         
         <Button
-          variant="outline"
           onClick={onSaveToHistory}
-          className="flex-1"
+          className="flex-1 bg-green-600 hover:bg-green-700"
+          disabled={loading}
         >
-          <Save className="h-4 w-4 mr-2" />
-          Salvar no Histórico
+          {loading ? (
+            <>
+              <Loading size="sm" className="mr-2" />
+              Salvando...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Salvar no Histórico
+            </>
+          )}
         </Button>
         
         <Button
           onClick={onNewSplit}
-          className="flex-1 bg-blue-500 hover:bg-blue-600"
+          className="flex-1" disabled={loading}
         >
           <Plus className="h-4 w-4 mr-2" />
           Novo Split

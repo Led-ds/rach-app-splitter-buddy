@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { Navigation } from "@/components/Navigation";
 import { MainContent } from "@/components/MainContent";
@@ -11,130 +11,116 @@ import { ExpenseManagement } from "@/components/ExpenseManagement";
 import { ExpenseDivision } from "@/components/ExpenseDivision";
 import { FinalResult } from "@/components/FinalResult";
 import { TemplateSelector } from "@/components/TemplateSelector";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Person } from "@/types/person";
 import { Expense } from "@/types/expense";
 import { SplitHistory, SplitTemplate } from "@/types/history";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-
-type FlowStep = 'welcome' | 'template' | 'people' | 'expenses' | 'division' | 'result';
+import { useSplitState } from "@/hooks/useSplitState";
+import { useAsyncOperation } from "@/hooks/useAsyncOperation";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<'novo' | 'historico'>('novo');
-  const [currentStep, setCurrentStep] = useState<FlowStep>('welcome');
-  const [people, setPeople] = useState<Person[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<SplitTemplate | null>(null);
   const [history, setHistory] = useLocalStorage<SplitHistory[]>('split-history', []);
   const { toast } = useToast();
+  const isOnline = useOnlineStatus();
+  const { loading, executeAsync } = useAsyncOperation();
 
-  const handleStartNewSplit = () => {
-    setCurrentStep('template');
+  const {
+    currentStep,
+    people,
+    expenses,
+    selectedTemplate,
+    totalAmount,
+    setStep,
+    setPeople,
+    setExpenses,
+    setTemplate,
+    resetSplit,
+    loadFromHistory
+  } = useSplitState();
+
+  // Memoized navigation handlers
+  const handleStartNewSplit = useCallback(() => {
+    setStep('template');
     console.log("Iniciando fluxo do split...");
-  };
+  }, [setStep]);
 
-  const handleTemplateSelected = (template: SplitTemplate) => {
-    setSelectedTemplate(template);
-    setCurrentStep('people');
+  const handleTemplateSelected = useCallback((template: SplitTemplate) => {
+    setTemplate(template);
+    setStep('people');
     console.log("Template selecionado:", template);
-  };
+  }, [setTemplate, setStep]);
 
-  const handleStartFromScratch = () => {
-    setSelectedTemplate(null);
-    setCurrentStep('people');
+  const handleStartFromScratch = useCallback(() => {
+    setTemplate(null);
+    setStep('people');
     console.log("Começando do zero...");
-  };
+  }, [setTemplate, setStep]);
 
-  const handlePeopleContinue = (selectedPeople: Person[]) => {
+  const handlePeopleContinue = useCallback((selectedPeople: Person[]) => {
     setPeople(selectedPeople);
-    setCurrentStep('expenses');
+    setStep('expenses');
     console.log("Pessoas selecionadas:", selectedPeople);
-  };
+  }, [setPeople, setStep]);
 
-  const handleExpensesContinue = (expensesList: Expense[]) => {
+  const handleExpensesContinue = useCallback((expensesList: Expense[]) => {
     setExpenses(expensesList);
-    setCurrentStep('division');
+    setStep('division');
     console.log("Gastos adicionados:", expensesList);
-  };
+  }, [setExpenses, setStep]);
 
-  const handleBackToWelcome = () => {
-    setCurrentStep('welcome');
-    setPeople([]);
-    setSelectedTemplate(null);
-  };
+  const handleDivisionContinue = useCallback((finalExpenses: Expense[]) => {
+    setExpenses(finalExpenses);
+    setStep('result');
+    console.log("Divisão finalizada:", finalExpenses);
+  }, [setExpenses, setStep]);
 
-  const handleBackToTemplate = () => {
-    setCurrentStep('template');
-  };
+  // Navigation back handlers
+  const handleBackToWelcome = useCallback(() => setStep('welcome'), [setStep]);
+  const handleBackToTemplate = useCallback(() => setStep('template'), [setStep]);
+  const handleBackToPeople = useCallback(() => setStep('people'), [setStep]);
+  const handleBackToExpenses = useCallback(() => setStep('expenses'), [setStep]);
+  const handleBackToDivision = useCallback(() => setStep('division'), [setStep]);
 
-  const handleBackToPeople = () => {
-    setCurrentStep('people');
-  };
-
-  const handleBackToExpenses = () => {
-    setCurrentStep('expenses');
-  };
-
-  const handleTabChange = (tab: 'novo' | 'historico') => {
+  const handleTabChange = useCallback((tab: 'novo' | 'historico') => {
     setActiveTab(tab);
     if (tab === 'novo') {
-      setCurrentStep('welcome');
-      setPeople([]);
-      setExpenses([]);
-      setSelectedTemplate(null);
+      resetSplit();
     }
-  };
+  }, [resetSplit]);
 
-  const handleDivisionContinue = (finalExpenses: Expense[]) => {
-    setExpenses(finalExpenses);
-    setCurrentStep('result');
-    console.log("Divisão finalizada:", finalExpenses);
-  };
+  const handleSaveToHistory = useCallback(async () => {
+    await executeAsync(async () => {
+      const newSplit: SplitHistory = {
+        id: crypto.randomUUID(),
+        name: selectedTemplate?.name || `Split ${new Date().toLocaleDateString('pt-BR')}`,
+        date: new Date().toISOString(),
+        people,
+        expenses,
+        totalAmount,
+        status: 'completed',
+        template: selectedTemplate?.id
+      };
 
-  const handleBackToDivision = () => {
-    setCurrentStep('division');
-  };
+      setHistory(prev => [newSplit, ...prev]);
+      
+      toast({
+        title: "Split salvo!",
+        description: `Seu split foi salvo no histórico com sucesso. ${!isOnline ? '(Modo offline)' : ''}`,
+      });
 
-  const handleSaveToHistory = () => {
-    const newSplit: SplitHistory = {
-      id: crypto.randomUUID(),
-      name: selectedTemplate?.name || `Split ${new Date().toLocaleDateString('pt-BR')}`,
-      date: new Date().toISOString(),
-      people,
-      expenses,
-      totalAmount: expenses.reduce((sum, expense) => sum + expense.amount, 0),
-      status: 'completed',
-      template: selectedTemplate?.id
-    };
-
-    setHistory(prev => [newSplit, ...prev]);
-    
-    toast({
-      title: "Split salvo!",
-      description: "Seu split foi salvo no histórico com sucesso.",
+      console.log("Salvando no histórico:", newSplit);
     });
+  }, [executeAsync, selectedTemplate, people, expenses, totalAmount, setHistory, toast, isOnline]);
 
-    console.log("Salvando no histórico:", newSplit);
-  };
+  const handleNewSplit = useCallback(() => {
+    resetSplit();
+  }, [resetSplit]);
 
-  const handleNewSplit = () => {
-    setCurrentStep('welcome');
-    setPeople([]);
-    setExpenses([]);
-    setSelectedTemplate(null);
-  };
-
-  const handleUseAgain = (split: SplitHistory) => {
-    setPeople(split.people);
-    setExpenses(split.expenses.map(expense => ({
-      ...expense,
-      id: crypto.randomUUID(), // Generate new IDs
-      splitBetween: undefined,
-      splitType: 'equal',
-      splitData: undefined
-    })));
-    setSelectedTemplate(split.template ? {
+  const handleUseAgain = useCallback((split: SplitHistory) => {
+    const template = split.template ? {
       id: split.template,
       name: split.name,
       description: '',
@@ -143,16 +129,29 @@ const Index = () => {
            split.template === 'restaurante' ? '🍽️' :
            split.template === 'balada' ? '🎉' : '💰',
       defaultExpenses: []
-    } : null);
+    } : null;
+
+    const resetExpenses = split.expenses.map(expense => ({
+      ...expense,
+      id: crypto.randomUUID(),
+      splitBetween: undefined,
+      splitType: 'equal' as const,
+      splitData: undefined
+    }));
+
+    loadFromHistory({
+      people: split.people,
+      expenses: resetExpenses,
+      template
+    });
     
     setActiveTab('novo');
-    setCurrentStep('expenses');
     
     toast({
       title: "Split carregado!",
       description: "As pessoas e gastos foram carregados do histórico.",
     });
-  };
+  }, [loadFromHistory, setActiveTab, toast]);
 
   const renderCurrentStep = () => {
     switch (currentStep) {
@@ -199,6 +198,7 @@ const Index = () => {
             onBack={handleBackToDivision}
             onNewSplit={handleNewSplit}
             onSaveToHistory={handleSaveToHistory}
+            loading={loading}
           />
         );
       default:
@@ -207,9 +207,15 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className={`min-h-screen flex flex-col bg-gray-50 ${!isOnline ? 'opacity-95' : ''}`}>
       <Header />
       <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
+      
+      {!isOnline && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 text-center text-sm">
+          📱 Modo offline - Suas alterações serão salvas localmente
+        </div>
+      )}
       
       <MainContent>
         {activeTab === 'novo' ? renderCurrentStep() : <HistoryScreen onUseAgain={handleUseAgain} />}
