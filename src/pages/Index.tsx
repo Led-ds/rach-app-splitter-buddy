@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { Navigation } from "@/components/Navigation";
@@ -6,6 +5,7 @@ import { MainContent } from "@/components/MainContent";
 import { Footer } from "@/components/Footer";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { HistoryScreen } from "@/components/HistoryScreen";
+import { StoryScreen } from "@/components/StoryScreen";
 import { PeopleManagement } from "@/components/PeopleManagement";
 import { ExpenseManagement } from "@/components/ExpenseManagement";
 import { ExpenseDivision } from "@/components/ExpenseDivision";
@@ -21,7 +21,7 @@ import { useAsyncOperation } from "@/hooks/useAsyncOperation";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<'novo' | 'historico'>('novo');
+  const [activeTab, setActiveTab] = useState<'novo' | 'historico' | 'contos'>('novo');
   const [history, setHistory] = useLocalStorage<SplitHistory[]>('split-history', []);
   const { toast } = useToast();
   const isOnline = useOnlineStatus();
@@ -84,7 +84,7 @@ const Index = () => {
   const handleBackToExpenses = useCallback(() => setStep('expenses'), [setStep]);
   const handleBackToDivision = useCallback(() => setStep('division'), [setStep]);
 
-  const handleTabChange = useCallback((tab: 'novo' | 'historico') => {
+  const handleTabChange = useCallback((tab: 'novo' | 'historico' | 'contos') => {
     setActiveTab(tab);
     if (tab === 'novo') {
       resetSplit();
@@ -218,7 +218,7 @@ const Index = () => {
       )}
       
       <MainContent>
-        {activeTab === 'novo' ? renderCurrentStep() : <HistoryScreen onUseAgain={handleUseAgain} />}
+        {activeTab === 'novo' ? renderCurrentStep() : activeTab === 'historico' ? <HistoryScreen onUseAgain={handleUseAgain} /> : <StoryScreen />}
       </MainContent>
       
       <Footer />
