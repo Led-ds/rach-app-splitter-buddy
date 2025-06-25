@@ -1,5 +1,5 @@
+
 import { useState, useEffect } from "react";
-import { v4 as uuidv4 } from 'uuid';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export const ExpenseForm = ({ people, onAddExpense, template }: ExpenseFormProps
     }
 
     const newExpense: Expense = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       description,
       amount: parseFloat(amount),
       paidBy,
