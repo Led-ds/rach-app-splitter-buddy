@@ -1,14 +1,13 @@
+
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Expense } from "@/types/expense";
 import { Person } from "@/types/person";
 import { ExpenseForm } from "./ExpenseForm";
 import { SplitTemplate } from "@/types/history";
+import { ExpenseManagementViewModel } from "../viewmodels/expense-management.viewmodel";
 
 interface ExpenseManagementProps {
   people: Person[];
@@ -18,31 +17,56 @@ interface ExpenseManagementProps {
 }
 
 export const ExpenseManagement = ({ people, onBack, onContinue, template }: ExpenseManagementProps) => {
+  const [viewModel] = useState(() => new ExpenseManagementViewModel(
+    people.map(p => ({ id: p.id, name: p.name, color: p.color })),
+    onContinue,
+    template ? {
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      icon: template.icon,
+      defaultExpenses: template.defaultExpenses
+    } : null
+  ));
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
-  const handleAddExpense = (newExpense: Expense) => {
-    setExpenses([...expenses, newExpense]);
+  const handleAddExpense = async (newExpense: Expense) => {
+    try {
+      await viewModel.addExpense({
+        id: newExpense.id,
+        description: newExpense.description,
+        amount: newExpense.amount,
+        paidBy: newExpense.paidBy,
+        category: newExpense.category,
+        date: newExpense.date,
+        splitBetween: newExpense.splitBetween,
+        splitType: newExpense.splitType,
+        splitData: newExpense.splitData
+      });
+      setExpenses(viewModel.expenses);
+    } catch (error) {
+      console.error('Erro ao adicionar gasto:', error);
+    }
   };
 
-  const handleDeleteExpense = (id: string) => {
-    setExpenses(expenses.filter((expense) => expense.id !== id));
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      await viewModel.deleteExpense(id);
+      setExpenses(viewModel.expenses);
+    } catch (error) {
+      console.error('Erro ao deletar gasto:', error);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {template ? `${template.icon} Gastos do ${template.name}` : 'Adicionar Gastos'}
+          {viewModel.template ? `${viewModel.template.icon} Gastos do ${viewModel.template.name}` : 'Adicionar Gastos'}
         </h2>
         <p className="text-gray-600">
-          {template ? `Adicione os gastos do ${template.name.toLowerCase()}` : 'Registre todos os gastos que precisam ser divididos'}
+          {viewModel.template ? `Adicione os gastos do ${viewModel.template.name.toLowerCase()}` : 'Registre todos os gastos que precisam ser divididos'}
         </p>
       </div>
 
@@ -65,7 +89,7 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
                     <p className="text-sm text-gray-500">{expense.category}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-700">{formatCurrency(expense.amount)}</p>
+                    <p className="font-semibold text-gray-700">{viewModel.formatCurrency(expense.amount)}</p>
                     <Button variant="ghost" size="sm" onClick={() => handleDeleteExpense(expense.id)}>
                       Excluir
                     </Button>
@@ -74,7 +98,7 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
               ))}
             </div>
             <div className="text-right font-bold">
-              Total: {formatCurrency(expenses.reduce((sum, expense) => sum + expense.amount, 0))}
+              Total: {viewModel.formatCurrency(viewModel.totalAmount)}
             </div>
           </CardContent>
         </Card>
@@ -86,7 +110,7 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={() => onContinue(expenses)} className="flex-1 bg-blue-500 hover:bg-blue-600">
+        <Button onClick={() => viewModel.continue()} className="flex-1 bg-blue-500 hover:bg-blue-600">
           Continuar para Divisão
         </Button>
       </div>

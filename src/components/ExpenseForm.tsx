@@ -1,16 +1,11 @@
 
-import { useState, useEffect } from "react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, X } from "lucide-react";
-import { Expense } from "@/types/expense";
 import { Person } from "@/types/person";
+import { Expense } from "@/types/expense";
 import { SplitTemplate } from "@/types/history";
+import { ExpenseFormViewModel } from "../viewmodels/expense-form.viewmodel";
+import { expenseFormTemplate, suggestionTemplate } from "../views/expense-form.view";
 
 interface ExpenseFormProps {
   people: Person[];
@@ -19,153 +14,159 @@ interface ExpenseFormProps {
 }
 
 export const ExpenseForm = ({ people, onAddExpense, template }: ExpenseFormProps) => {
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [paidBy, setPaidBy] = useState(people.length > 0 ? people[0].name : "");
-  const [category, setCategory] = useState("Comida");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-
-  const categories = ["Comida", "Transporte", "Hospedagem", "Entretenimento", "Outros"];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewModelRef = useRef<ExpenseFormViewModel | null>(null);
 
   useEffect(() => {
-    if (template?.defaultExpenses) {
-      const initialExpense = template.defaultExpenses[0];
-      if (initialExpense) {
-        setDescription(initialExpense.description);
-        setCategory(initialExpense.category);
-      }
-    }
-  }, [template]);
+    if (!containerRef.current) return;
 
-  const handleAddExpense = () => {
-    if (!description || !amount || !paidBy || !category || !date) {
-      alert("Por favor, preencha todos os campos.");
-      return;
-    }
+    // Inicializar ViewModel
+    viewModelRef.current = new ExpenseFormViewModel(
+      people.map(p => ({ id: p.id, name: p.name, color: p.color })),
+      onAddExpense,
+      template ? {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        icon: template.icon,
+        defaultExpenses: template.defaultExpenses
+      } : null
+    );
 
-    const newExpense: Expense = {
-      id: crypto.randomUUID(),
-      description,
-      amount: parseFloat(amount),
-      paidBy,
-      category,
-      date,
+    // Renderizar template
+    containerRef.current.innerHTML = expenseFormTemplate;
+
+    // Configurar elementos
+    setupFormElements();
+    setupEventListeners();
+    
+    // Cleanup
+    return () => {
+      viewModelRef.current = null;
     };
+  }, [people, template]);
 
-    onAddExpense(newExpense);
-    setDescription("");
-    setAmount("");
-  };
+  const setupFormElements = () => {
+    if (!containerRef.current || !viewModelRef.current) return;
 
-  const getSuggestions = (category: string): string[] => {
-    if (template?.defaultExpenses) {
-      return template.defaultExpenses
-        .filter(expense => expense.category === category)
-        .map(expense => expense.description);
+    const descriptionInput = containerRef.current.querySelector('#description') as HTMLInputElement;
+    const amountInput = containerRef.current.querySelector('#amount') as HTMLInputElement;
+    const paidBySelect = containerRef.current.querySelector('#paidBy') as HTMLSelectElement;
+    const categorySelect = containerRef.current.querySelector('#category') as HTMLSelectElement;
+    const dateInput = containerRef.current.querySelector('#date') as HTMLInputElement;
+
+    // Definir valores iniciais
+    if (descriptionInput) descriptionInput.value = viewModelRef.current.description;
+    if (amountInput) amountInput.value = viewModelRef.current.amount;
+    if (categorySelect) categorySelect.value = viewModelRef.current.category;
+    if (dateInput) dateInput.value = viewModelRef.current.date;
+
+    // Preencher opções de pessoas
+    if (paidBySelect) {
+      paidBySelect.innerHTML = '<option value="">Selecione...</option>';
+      viewModelRef.current.people.forEach(person => {
+        const option = document.createElement('option');
+        option.value = person.name;
+        option.textContent = person.name;
+        paidBySelect.appendChild(option);
+      });
+      paidBySelect.value = viewModelRef.current.paidBy;
     }
 
-    switch (category) {
-      case "Comida":
-        return ["Almoço", "Jantar", "Lanche", "Supermercado"];
-      case "Transporte":
-        return ["Uber", "Gasolina", "Ônibus", "Estacionamento"];
-      case "Hospedagem":
-        return ["Hotel", "Airbnb", "Hostel"];
-      case "Entretenimento":
-        return ["Cinema", "Show", "Bar", "Festa"];
-      case "Outros":
-        return ["Presente", "Taxa", "Multa"];
-      default:
-        return [];
-    }
+    // Renderizar sugestões
+    renderSuggestions();
   };
 
-  useEffect(() => {
-    setSuggestions(getSuggestions(category));
-  }, [category]);
+  const setupEventListeners = () => {
+    if (!containerRef.current || !viewModelRef.current) return;
+
+    const descriptionInput = containerRef.current.querySelector('#description') as HTMLInputElement;
+    const amountInput = containerRef.current.querySelector('#amount') as HTMLInputElement;
+    const paidBySelect = containerRef.current.querySelector('#paidBy') as HTMLSelectElement;
+    const categorySelect = containerRef.current.querySelector('#category') as HTMLSelectElement;
+    const dateInput = containerRef.current.querySelector('#date') as HTMLInputElement;
+    const addButton = containerRef.current.querySelector('#add-expense-btn') as HTMLButtonElement;
+
+    // Event listeners
+    descriptionInput?.addEventListener('input', (e) => {
+      if (viewModelRef.current) {
+        viewModelRef.current.description = (e.target as HTMLInputElement).value;
+      }
+    });
+
+    amountInput?.addEventListener('input', (e) => {
+      if (viewModelRef.current) {
+        viewModelRef.current.amount = (e.target as HTMLInputElement).value;
+      }
+    });
+
+    paidBySelect?.addEventListener('change', (e) => {
+      if (viewModelRef.current) {
+        viewModelRef.current.paidBy = (e.target as HTMLSelectElement).value;
+      }
+    });
+
+    categorySelect?.addEventListener('change', (e) => {
+      if (viewModelRef.current) {
+        viewModelRef.current.category = (e.target as HTMLSelectElement).value;
+        renderSuggestions();
+      }
+    });
+
+    dateInput?.addEventListener('change', (e) => {
+      if (viewModelRef.current) {
+        viewModelRef.current.date = (e.target as HTMLInputElement).value;
+      }
+    });
+
+    addButton?.addEventListener('click', async () => {
+      try {
+        await viewModelRef.current?.addExpense();
+        // Reset form after successful addition
+        if (descriptionInput) descriptionInput.value = '';
+        if (amountInput) amountInput.value = '';
+      } catch (error) {
+        alert((error as Error).message);
+      }
+    });
+  };
+
+  const renderSuggestions = () => {
+    if (!containerRef.current || !viewModelRef.current) return;
+
+    const suggestionsContainer = containerRef.current.querySelector('#suggestions-container');
+    if (!suggestionsContainer) return;
+
+    const suggestions = viewModelRef.current.suggestions;
+    
+    if (suggestions.length > 0) {
+      suggestionsContainer.innerHTML = suggestions
+        .map(suggestion => suggestionTemplate(suggestion))
+        .join('');
+      suggestionsContainer.classList.remove('hidden');
+
+      // Add click listeners to suggestions
+      suggestionsContainer.querySelectorAll('[data-suggestion]').forEach(element => {
+        element.addEventListener('click', () => {
+          const suggestion = element.getAttribute('data-suggestion');
+          if (suggestion && viewModelRef.current) {
+            viewModelRef.current.selectSuggestion(suggestion);
+            const descriptionInput = containerRef.current?.querySelector('#description') as HTMLInputElement;
+            if (descriptionInput) {
+              descriptionInput.value = suggestion;
+            }
+          }
+        });
+      });
+    } else {
+      suggestionsContainer.classList.add('hidden');
+    }
+  };
 
   return (
     <Card>
-      <CardContent className="grid gap-4">
-        <div>
-          <Label htmlFor="description">Descrição</Label>
-          <Input
-            type="text"
-            id="description"
-            placeholder="Ex: Jantar com a equipe"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          {suggestions.length > 0 && (
-            <div className="flex gap-2 mt-2">
-              {suggestions.map((suggestion) => (
-                <Badge
-                  key={suggestion}
-                  className="cursor-pointer"
-                  onClick={() => setDescription(suggestion)}
-                >
-                  {suggestion}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="amount">Valor</Label>
-          <Input
-            type="number"
-            id="amount"
-            placeholder="Ex: 50.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="paidBy">Pago por</Label>
-          <Select value={paidBy} onValueChange={setPaidBy}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione..." />
-            </SelectTrigger>
-            <SelectContent>
-              {people.map((person) => (
-                <SelectItem key={person.id} value={person.name}>
-                  {person.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="category">Categoria</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione..." />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="date">Data</Label>
-          <Input
-            type="date"
-            id="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-
-        <Button onClick={handleAddExpense}>Adicionar Gasto</Button>
+      <CardContent className="p-6">
+        <div ref={containerRef} />
       </CardContent>
     </Card>
   );
