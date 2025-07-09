@@ -8,6 +8,7 @@ import { Person } from "@/types/person";
 import { ExpenseForm } from "./ExpenseForm";
 import { SplitTemplate } from "@/types/history";
 import { ExpenseManagementViewModel } from "../viewmodels/expense-management.viewmodel";
+import { useToast } from "@/hooks/use-toast";
 
 interface ExpenseManagementProps {
   people: Person[];
@@ -17,9 +18,20 @@ interface ExpenseManagementProps {
 }
 
 export const ExpenseManagement = ({ people, onBack, onContinue, template }: ExpenseManagementProps) => {
+  const { toast } = useToast();
   const [viewModel] = useState(() => new ExpenseManagementViewModel(
     people.map(p => ({ id: p.id, name: p.name, color: p.color })),
-    onContinue,
+    (expenses) => onContinue(expenses.map(e => ({
+      id: e.id,
+      description: e.description,
+      amount: e.amount,
+      paidBy: e.paidBy,
+      category: e.category,
+      date: e.date,
+      splitBetween: e.splitBetween,
+      splitType: e.splitType,
+      splitData: e.splitData
+    }))),
     template ? {
       id: template.id,
       name: template.name,
@@ -30,6 +42,24 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
   ));
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Atualiza a lista local quando o viewModel é atualizado
+    const mappedExpenses = viewModel.expenses.map(e => ({
+      id: e.id,
+      description: e.description,
+      amount: e.amount,
+      paidBy: e.paidBy,
+      category: e.category,
+      date: e.date,
+      splitBetween: e.splitBetween,
+      splitType: e.splitType,
+      splitData: e.splitData
+    }));
+    setExpenses(mappedExpenses);
+    setIsLoading(viewModel.isLoading);
+  }, [viewModel.expenses, viewModel.isLoading]);
 
   const handleAddExpense = async (newExpense: Expense) => {
     try {
@@ -44,18 +74,35 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
         splitType: newExpense.splitType,
         splitData: newExpense.splitData
       });
-      setExpenses(viewModel.expenses);
+      
+      toast({
+        title: "Gasto adicionado",
+        description: `${newExpense.description} foi adicionado com sucesso.`
+      });
     } catch (error) {
       console.error('Erro ao adicionar gasto:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o gasto. Tente novamente.",
+        variant: "destructive"
+      });
     }
   };
 
   const handleDeleteExpense = async (id: string) => {
     try {
       await viewModel.deleteExpense(id);
-      setExpenses(viewModel.expenses);
+      toast({
+        title: "Gasto removido",
+        description: "O gasto foi removido com sucesso."
+      });
     } catch (error) {
       console.error('Erro ao deletar gasto:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o gasto. Tente novamente.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -90,7 +137,12 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-gray-700">{viewModel.formatCurrency(expense.amount)}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteExpense(expense.id)}>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleDeleteExpense(expense.id)}
+                      disabled={isLoading}
+                    >
                       Excluir
                     </Button>
                   </div>
@@ -106,12 +158,16 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
 
       {/* Navigation Buttons */}
       <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack} className="flex-1">
+        <Button variant="outline" onClick={onBack} className="flex-1" disabled={isLoading}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={() => viewModel.continue()} className="flex-1 bg-blue-500 hover:bg-blue-600">
-          Continuar para Divisão
+        <Button 
+          onClick={() => viewModel.continue()} 
+          className="flex-1 bg-blue-500 hover:bg-blue-600"
+          disabled={isLoading || !viewModel.canContinue()}
+        >
+          {isLoading ? "Carregando..." : "Continuar para Divisão"}
         </Button>
       </div>
     </div>

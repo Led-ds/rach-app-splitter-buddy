@@ -14,6 +14,7 @@ export class ExpenseFormViewModel {
   private _template: SplitTemplateModel | null = null;
   private _suggestions: string[] = [];
   private _onAddExpense?: (expense: ExpenseModel) => void;
+  private _isLoading = false;
 
   // Getters
   get description(): string { return this._description; }
@@ -24,6 +25,7 @@ export class ExpenseFormViewModel {
   get people(): PersonModel[] { return this._people; }
   get template(): SplitTemplateModel | null { return this._template; }
   get suggestions(): string[] { return this._suggestions; }
+  get isLoading(): boolean { return this._isLoading; }
 
   // Setters
   set description(value: string) { this._description = value; }
@@ -92,6 +94,7 @@ export class ExpenseFormViewModel {
     }
 
     try {
+      this._isLoading = true;
       const expenseRequest: ExpenseCreateRequest = {
         description: this._description,
         amount: parseFloat(this._amount),
@@ -100,20 +103,14 @@ export class ExpenseFormViewModel {
         date: this._date
       };
 
-      // Em um cenário real, chamaríamos o serviço
-      // const newExpense = await expenseService.createExpense(expenseRequest);
-      
-      // Por enquanto, criamos localmente
-      const newExpense: ExpenseModel = {
-        id: crypto.randomUUID(),
-        ...expenseRequest
-      };
-
+      const newExpense = await expenseService.createExpense(expenseRequest);
       this._onAddExpense?.(newExpense);
       this.reset();
     } catch (error) {
       console.error('Erro ao adicionar gasto:', error);
       throw error;
+    } finally {
+      this._isLoading = false;
     }
   }
 
