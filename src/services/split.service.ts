@@ -5,6 +5,7 @@ import { SplitModel, SplitCreateRequest, SplitTemplateModel } from '../models/sp
 export class SplitService {
   private endpoint = '/splits';
   private templateEndpoint = '/split-templates';
+  private historyEndpoint = '/split-history';
 
   async getAllSplits(): Promise<SplitModel[]> {
     return apiClient.get<SplitModel[]>(this.endpoint);
@@ -36,6 +37,15 @@ export class SplitService {
 
   async getTemplateById(id: string): Promise<SplitTemplateModel> {
     return apiClient.get<SplitTemplateModel>(`${this.templateEndpoint}/${id}`);
+  }
+
+  // Métodos para histórico de splits
+  async getSplitHistory(): Promise<SplitModel[]> {
+    return apiClient.get<SplitModel[]>(this.historyEndpoint);
+  }
+
+  async getSplitHistoryById(id: string): Promise<SplitModel> {
+    return apiClient.get<SplitModel>(`${this.historyEndpoint}/${id}`);
   }
 }
 
