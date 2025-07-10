@@ -1,4 +1,3 @@
-
 export interface ApiConfig {
   baseUrl: string;
   timeout: number;
@@ -62,13 +61,16 @@ export class ApiClient {
       
       // Verificar se há conteúdo para parsear
       const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
+      const contentLength = response.headers.get('content-length');
+      
+      if (contentType && contentType.includes('application/json') && contentLength !== '0') {
         const result = await response.json();
         console.log('✅ Resposta JSON:', result);
         return result;
       } else {
-        console.log('ℹ️ Resposta sem JSON, retornando vazio');
-        return [] as T;
+        console.log('ℹ️ Resposta sem JSON (status ' + response.status + ')');
+        // Para responses 201/204 sem corpo, retornar null em vez de array vazio
+        return null as T;
       }
       
     } catch (error) {

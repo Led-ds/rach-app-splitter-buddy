@@ -1,4 +1,3 @@
-
 import { apiClient } from './api.config';
 import { ExpenseModel, ExpenseCreateRequest, ExpenseUpdateRequest } from '../models/expense.model';
 
@@ -33,6 +32,23 @@ export class ExpenseService {
     try {
       console.log('🌐 ExpenseService - Criando expense:', expense);
       const result = await apiClient.post<ExpenseModel>(this.endpoint, expense);
+      console.log('🌐 ExpenseService - Resposta da API:', result);
+      
+      // Se a API retornou null (201 sem corpo), criar um expense com os dados enviados + ID gerado
+      if (!result) {
+        console.log('🔧 ExpenseService - API retornou vazio, construindo expense locally');
+        const createdExpense: ExpenseModel = {
+          id: crypto.randomUUID(), // Gerar ID temporário
+          description: expense.description,
+          amount: expense.amount,
+          paidBy: expense.paidBy,
+          category: expense.category,
+          date: expense.date
+        };
+        console.log('🔧 ExpenseService - Expense construído:', createdExpense);
+        return createdExpense;
+      }
+      
       console.log('🌐 ExpenseService - Expense criado:', result);
       return result;
     } catch (error) {
