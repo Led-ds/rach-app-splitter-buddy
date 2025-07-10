@@ -38,15 +38,32 @@ export class ApiClient {
     };
 
     try {
+      console.log('🌐 Fazendo requisição para:', url);
+      console.log('📝 Config:', config);
+      
       const response = await fetch(url, config);
+      
+      console.log('📡 Status da resposta:', response.status);
+      console.log('📋 Headers da resposta:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      // Verificar se há conteúdo para parsear
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const result = await response.json();
+        console.log('✅ Resposta JSON:', result);
+        return result;
+      } else {
+        console.log('ℹ️ Resposta sem JSON, retornando vazio');
+        return [] as T; // Para casos onde não há conteúdo JSON
+      }
+      
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('❌ Erro na requisição API:', error);
+      console.error('🔗 URL:', url);
       throw error;
     }
   }

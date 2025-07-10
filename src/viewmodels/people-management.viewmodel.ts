@@ -35,51 +35,79 @@ export class PeopleManagementViewModel {
   private async loadPeople(): Promise<void> {
     try {
       this._isLoading = true;
-      this._people = await personService.getAllPeople();
+      console.log('🔄 Carregando pessoas do backend...');
+      
+      const result = await personService.getAllPeople();
+      console.log('✅ Resposta do backend:', result);
+      
+      // Garantir que sempre temos um array, mesmo se o backend retornar null/undefined
+      this._people = Array.isArray(result) ? result : [];
+      console.log('📋 Pessoas carregadas:', this._people.length);
+      
     } catch (error) {
-      console.error('Erro ao carregar pessoas:', error);
+      console.error('❌ Erro ao carregar pessoas:', error);
+      // Em caso de erro, inicializar com array vazio
       this._people = [];
     } finally {
       this._isLoading = false;
+      console.log('✨ Loading finalizado. IsLoading:', this._isLoading);
     }
   }
 
   async addPerson(): Promise<void> {
-    if (!this._newPersonName.trim()) return;
+    if (!this._newPersonName.trim()) {
+      console.log('⚠️ Nome vazio, cancelando adição');
+      return;
+    }
 
     try {
       this._isLoading = true;
+      console.log('🔄 Adicionando pessoa:', this._newPersonName);
+      
       const personRequest: PersonCreateRequest = {
         name: this._newPersonName.trim(),
         color: this.getRandomColor()
       };
 
       const newPerson = await personService.createPerson(personRequest);
+      console.log('✅ Pessoa criada:', newPerson);
+      
       this._people = [...this._people, newPerson];
       this._newPersonName = '';
+      console.log('📋 Total de pessoas agora:', this._people.length);
+      
     } catch (error) {
-      console.error('Erro ao adicionar pessoa:', error);
+      console.error('❌ Erro ao adicionar pessoa:', error);
       throw error;
     } finally {
       this._isLoading = false;
+      console.log('✨ Loading finalizado após adicionar');
     }
   }
 
   async removePerson(id: string): Promise<void> {
     try {
       this._isLoading = true;
+      console.log('🔄 Removendo pessoa:', id);
+      
       await personService.deletePerson(id);
+      console.log('✅ Pessoa removida do backend');
+      
       this._people = this._people.filter(person => person.id !== id);
       this._selectedPersonId = null;
+      console.log('📋 Total de pessoas agora:', this._people.length);
+      
     } catch (error) {
-      console.error('Erro ao remover pessoa:', error);
+      console.error('❌ Erro ao remover pessoa:', error);
       throw error;
     } finally {
       this._isLoading = false;
+      console.log('✨ Loading finalizado após remover');
     }
   }
 
   selectPerson(personId: string): void {
+    console.log('👆 Pessoa selecionada:', personId);
     this._selectedPersonId = personId;
   }
 
@@ -88,14 +116,19 @@ export class PeopleManagementViewModel {
   }
 
   canContinue(): boolean {
-    return this._people.length > 0;
+    const canContinue = this._people.length > 0;
+    console.log('🤔 Pode continuar?', canContinue, '(pessoas:', this._people.length, ')');
+    return canContinue;
   }
 
   continue(): void {
+    console.log('➡️ Tentando continuar...');
     if (!this.canContinue()) {
+      console.log('❌ Não pode continuar - sem pessoas');
       throw new Error("Adicione pelo menos uma pessoa para continuar.");
     }
     
+    console.log('✅ Continuando com', this._people.length, 'pessoas');
     this._onContinue?.(this._people);
   }
 
