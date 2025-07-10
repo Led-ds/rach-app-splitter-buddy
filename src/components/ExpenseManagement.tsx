@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,37 +43,11 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  // Função para sincronizar com o viewModel
-  const syncExpenses = () => {
-    console.log('🔄 Sincronizando expenses do viewModel...');
-    const validExpenses = viewModel.expenses.map(e => ({
-      id: e.id,
-      description: e.description,
-      amount: e.amount,
-      paidBy: e.paidBy,
-      category: e.category,
-      date: e.date,
-      splitBetween: e.splitBetween,
-      splitType: e.splitType,
-      splitData: e.splitData
-    }));
-    
-    console.log('🔄 Expenses válidos sincronizados:', validExpenses);
-    setExpenses(validExpenses);
-    setIsLoading(viewModel.isLoading);
-  };
-
-  // useEffect apenas para sincronização inicial
-  useEffect(() => {
-    console.log('🔄 useEffect inicial - carregando expenses...');
-    syncExpenses();
-  }, [refreshKey]); // Apenas depende do refreshKey
 
   const handleAddExpense = async (newExpense: Expense) => {
     try {
       console.log('➕ Componente - Adicionando novo gasto:', newExpense);
+      setIsLoading(true);
       
       await viewModel.addExpense({
         id: newExpense.id,
@@ -87,8 +61,8 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
         splitData: newExpense.splitData
       });
       
-      // Forçar re-sincronização após adicionar
-      setRefreshKey(prev => prev + 1);
+      // Atualizar lista local diretamente
+      setExpenses(prev => [...prev, newExpense]);
       
       toast({
         title: "Gasto adicionado",
@@ -101,17 +75,20 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
         description: "Não foi possível adicionar o gasto. Tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDeleteExpense = async (id: string) => {
     try {
       console.log('🗑️ Componente - Deletando gasto com ID:', id);
+      setIsLoading(true);
       
       await viewModel.deleteExpense(id);
       
-      // Forçar re-sincronização após deletar
-      setRefreshKey(prev => prev + 1);
+      // Atualizar lista local diretamente
+      setExpenses(prev => prev.filter(expense => expense.id !== id));
       
       toast({
         title: "Gasto removido",
@@ -124,8 +101,13 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
         description: "Não foi possível remover o gasto. Tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Calcular total diretamente dos expenses locais
+  const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -151,7 +133,7 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
             <h3 className="text-lg font-semibold text-gray-900">Lista de Gastos ({expenses.length} itens)</h3>
             <div className="space-y-3">
               {expenses.map((expense) => {
-                console.log(`🧾 Renderizando expense válido:`, expense);
+                console.log(`🧾 Renderizando expense:`, expense);
                 
                 return (
                   <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -177,7 +159,7 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
               })}
             </div>
             <div className="text-right font-bold">
-              Total: {viewModel.formatCurrency(viewModel.totalAmount)}
+              Total: {viewModel.formatCurrency(totalAmount)}
             </div>
           </CardContent>
         </Card>
@@ -192,7 +174,7 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
         <Button 
           onClick={() => viewModel.continue()} 
           className="flex-1 bg-blue-500 hover:bg-blue-600"
-          disabled={isLoading || !viewModel.canContinue()}
+          disabled={isLoading || expenses.length === 0}
         >
           {isLoading ? "Carregando..." : "Continuar para Divisão"}
         </Button>
