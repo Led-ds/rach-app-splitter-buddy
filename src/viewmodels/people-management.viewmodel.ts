@@ -138,10 +138,9 @@ export class PeopleManagementViewModel {
   }
 
   reset(): void {
-    if (this._template?.defaultExpenses) {
-      this._newPersonName = '';
-      this._people = [];
-      this._selectedPersonId = null;
-    }
+    this._newPersonName = '';
+    this._people = [];
+    this._selectedPersonId = null;
+    this._isLoading = false;
   }
 }

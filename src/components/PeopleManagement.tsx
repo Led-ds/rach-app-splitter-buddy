@@ -37,26 +37,52 @@ export const PeopleManagement = ({ onContinue, onBack, template }: PeopleManagem
   const [people, setPeople] = useState<Person[]>([]);
   const [newPersonName, setNewPersonName] = useState("");
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Inicia como true
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Força re-render para sincronizar com ViewModel
+  const triggerUpdate = () => setForceUpdate(prev => prev + 1);
 
   useEffect(() => {
+    console.log('🔄 Sincronizando estado com ViewModel...');
+    
     // Sincroniza o estado local com o ViewModel
     const mappedPeople = viewModel.people.map(p => ({
       id: p.id,
       name: p.name,
       color: p.color
     }));
+    
     setPeople(mappedPeople);
     setNewPersonName(viewModel.newPersonName);
     setSelectedPersonId(viewModel.selectedPersonId);
     setIsLoading(viewModel.isLoading);
-  }, [viewModel.people, viewModel.newPersonName, viewModel.selectedPersonId, viewModel.isLoading]);
+    
+    console.log('✅ Estado sincronizado:', {
+      pessoas: mappedPeople.length,
+      loading: viewModel.isLoading,
+      nome: viewModel.newPersonName
+    });
+  }, [viewModel.people, viewModel.newPersonName, viewModel.selectedPersonId, viewModel.isLoading, forceUpdate]);
+
+  // Polling para garantir sincronização (temporário)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (viewModel.isLoading !== isLoading) {
+        console.log('🔄 Estado de loading mudou:', viewModel.isLoading);
+        triggerUpdate();
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [viewModel.isLoading, isLoading]);
 
   const handleAddPerson = async () => {
     if (newPersonName.trim() !== "") {
       try {
         viewModel.newPersonName = newPersonName.trim();
         await viewModel.addPerson();
+        triggerUpdate(); // Força re-render após operação
         
         toast({
           title: "Pessoa adicionada",
@@ -76,6 +102,7 @@ export const PeopleManagement = ({ onContinue, onBack, template }: PeopleManagem
   const handleRemovePerson = async (id: string) => {
     try {
       await viewModel.removePerson(id);
+      triggerUpdate(); // Força re-render após operação
       toast({
         title: "Pessoa removida",
         description: "A pessoa foi removida com sucesso."
@@ -92,6 +119,7 @@ export const PeopleManagement = ({ onContinue, onBack, template }: PeopleManagem
 
   const handlePersonClick = (person: Person) => {
     viewModel.selectPerson(person.id);
+    triggerUpdate(); // Força re-render após seleção
   };
 
   const handleContinue = () => {
@@ -105,6 +133,12 @@ export const PeopleManagement = ({ onContinue, onBack, template }: PeopleManagem
       });
     }
   };
+
+  console.log('🎨 Renderizando PeopleManagement:', {
+    isLoading,
+    peopleCount: people.length,
+    canContinue: viewModel.canContinue()
+  });
 
   return (
     <div className="space-y-6">
@@ -130,7 +164,7 @@ export const PeopleManagement = ({ onContinue, onBack, template }: PeopleManagem
               }}
               disabled={isLoading}
             />
-            <Button onClick={handleAddPerson} disabled={isLoading}>
+            <Button onClick={handleAddPerson} disabled={isLoading || !newPersonName.trim()}>
               <Plus className="h-4 w-4 mr-2" />
               {isLoading ? "Adicionando..." : "Adicionar"}
             </Button>
@@ -173,7 +207,11 @@ export const PeopleManagement = ({ onContinue, onBack, template }: PeopleManagem
         <Button variant="outline" onClick={onBack} className="w-1/2" disabled={isLoading}>
           Voltar
         </Button>
-        <Button onClick={handleContinue} className="w-1/2" disabled={isLoading || !viewModel.canContinue()}>
+        <Button 
+          onClick={handleContinue} 
+          className="w-1/2" 
+          disabled={isLoading || !viewModel.canContinue()}
+        >
           {isLoading ? "Carregando..." : "Continuar"}
         </Button>
       </div>
