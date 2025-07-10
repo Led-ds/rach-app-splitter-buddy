@@ -57,12 +57,18 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
       splitType: e.splitType,
       splitData: e.splitData
     }));
+    
+    console.log('🔄 Atualizando expenses no componente:', mappedExpenses);
+    console.log('🔍 Expenses originais do viewModel:', viewModel.expenses);
+    
     setExpenses(mappedExpenses);
     setIsLoading(viewModel.isLoading);
   }, [viewModel.expenses, viewModel.isLoading]);
 
   const handleAddExpense = async (newExpense: Expense) => {
     try {
+      console.log('➕ Adicionando novo gasto:', newExpense);
+      
       await viewModel.addExpense({
         id: newExpense.id,
         description: newExpense.description,
@@ -129,25 +135,33 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
           <CardContent className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Lista de Gastos</h3>
             <div className="space-y-3">
-              {expenses.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-700">{expense.description}</p>
-                    <p className="text-sm text-gray-500">{expense.category}</p>
+              {expenses.map((expense) => {
+                console.log('🧾 Renderizando expense:', expense);
+                return (
+                  <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-700">{expense.description || 'Descrição não informada'}</p>
+                      <p className="text-sm text-gray-500">{expense.category || 'Categoria não informada'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-700">
+                        {expense.amount !== undefined && expense.amount !== null && !isNaN(expense.amount) 
+                          ? viewModel.formatCurrency(expense.amount)
+                          : 'Valor inválido'
+                        }
+                      </p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        disabled={isLoading}
+                      >
+                        Excluir
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-700">{viewModel.formatCurrency(expense.amount)}</p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleDeleteExpense(expense.id)}
-                      disabled={isLoading}
-                    >
-                      Excluir
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="text-right font-bold">
               Total: {viewModel.formatCurrency(viewModel.totalAmount)}
