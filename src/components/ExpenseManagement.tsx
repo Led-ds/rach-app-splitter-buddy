@@ -43,13 +43,12 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    console.log('🔄 useEffect triggered - viewModel.expenses:', viewModel.expenses);
-    console.log('🔄 viewModel.expenses length:', viewModel.expenses.length);
-    
-    // Agora o viewModel.expenses já retorna apenas dados válidos (devido ao getter filtrado)
-    const mappedExpenses = viewModel.expenses.map(e => ({
+  // Função para sincronizar com o viewModel
+  const syncExpenses = () => {
+    console.log('🔄 Sincronizando expenses do viewModel...');
+    const validExpenses = viewModel.expenses.map(e => ({
       id: e.id,
       description: e.description,
       amount: e.amount,
@@ -61,11 +60,16 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
       splitData: e.splitData
     }));
     
-    console.log('🔄 Mapped expenses (filtered):', mappedExpenses);
-    
-    setExpenses(mappedExpenses);
+    console.log('🔄 Expenses válidos sincronizados:', validExpenses);
+    setExpenses(validExpenses);
     setIsLoading(viewModel.isLoading);
-  }, [viewModel.expenses, viewModel.isLoading]);
+  };
+
+  // useEffect apenas para sincronização inicial
+  useEffect(() => {
+    console.log('🔄 useEffect inicial - carregando expenses...');
+    syncExpenses();
+  }, [refreshKey]); // Apenas depende do refreshKey
 
   const handleAddExpense = async (newExpense: Expense) => {
     try {
@@ -82,6 +86,9 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
         splitType: newExpense.splitType,
         splitData: newExpense.splitData
       });
+      
+      // Forçar re-sincronização após adicionar
+      setRefreshKey(prev => prev + 1);
       
       toast({
         title: "Gasto adicionado",
@@ -102,6 +109,9 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
       console.log('🗑️ Componente - Deletando gasto com ID:', id);
       
       await viewModel.deleteExpense(id);
+      
+      // Forçar re-sincronização após deletar
+      setRefreshKey(prev => prev + 1);
       
       toast({
         title: "Gasto removido",
@@ -140,8 +150,8 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
           <CardContent className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Lista de Gastos ({expenses.length} itens)</h3>
             <div className="space-y-3">
-              {expenses.map((expense, index) => {
-                console.log(`🧾 Renderizando expense válido #${index}:`, expense);
+              {expenses.map((expense) => {
+                console.log(`🧾 Renderizando expense válido:`, expense);
                 
                 return (
                   <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
