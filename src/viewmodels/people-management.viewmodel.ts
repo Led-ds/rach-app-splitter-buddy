@@ -1,4 +1,3 @@
-
 import { PersonModel, PersonCreateRequest } from '../models/person.model';
 import { SplitTemplateModel } from '../models/split.model';
 import { personService } from '../services/person.service';
@@ -144,7 +143,8 @@ export class PeopleManagementViewModel {
   }
 
   private getRandomColor(): string {
-    const colors = ["bg-red-500", "bg-green-500", "bg-blue-500", "bg-yellow-500", "bg-purple-500", "bg-pink-500"];
+    // Retorna códigos hexadecimais válidos que o backend espera
+    const colors = ["#EF4444", "#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899"];
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
