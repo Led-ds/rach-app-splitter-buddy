@@ -48,24 +48,20 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
     console.log('🔄 useEffect triggered - viewModel.expenses:', viewModel.expenses);
     console.log('🔄 viewModel.expenses length:', viewModel.expenses.length);
     
-    // Atualiza a lista local quando o viewModel é atualizado
-    const mappedExpenses = viewModel.expenses.map(e => {
-      console.log('🗃️ Mapeando expense individual:', e);
-      return {
-        id: e.id,
-        description: e.description,
-        amount: e.amount,
-        paidBy: e.paidBy,
-        category: e.category,
-        date: e.date,
-        splitBetween: e.splitBetween,
-        splitType: e.splitType,
-        splitData: e.splitData
-      };
-    });
+    // Agora o viewModel.expenses já retorna apenas dados válidos (devido ao getter filtrado)
+    const mappedExpenses = viewModel.expenses.map(e => ({
+      id: e.id,
+      description: e.description,
+      amount: e.amount,
+      paidBy: e.paidBy,
+      category: e.category,
+      date: e.date,
+      splitBetween: e.splitBetween,
+      splitType: e.splitType,
+      splitData: e.splitData
+    }));
     
-    console.log('🔄 Mapped expenses:', mappedExpenses);
-    console.log('🔄 Current expenses state before update:', expenses);
+    console.log('🔄 Mapped expenses (filtered):', mappedExpenses);
     
     setExpenses(mappedExpenses);
     setIsLoading(viewModel.isLoading);
@@ -73,8 +69,7 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
 
   const handleAddExpense = async (newExpense: Expense) => {
     try {
-      console.log('➕ Adicionando novo gasto:', newExpense);
-      console.log('➕ Expenses antes de adicionar:', viewModel.expenses);
+      console.log('➕ Componente - Adicionando novo gasto:', newExpense);
       
       await viewModel.addExpense({
         id: newExpense.id,
@@ -87,8 +82,6 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
         splitType: newExpense.splitType,
         splitData: newExpense.splitData
       });
-      
-      console.log('➕ Expenses após adicionar:', viewModel.expenses);
       
       toast({
         title: "Gasto adicionado",
@@ -106,12 +99,9 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
 
   const handleDeleteExpense = async (id: string) => {
     try {
-      console.log('🗑️ Deletando gasto com ID:', id);
-      console.log('🗑️ Expenses antes de deletar:', viewModel.expenses);
+      console.log('🗑️ Componente - Deletando gasto com ID:', id);
       
       await viewModel.deleteExpense(id);
-      
-      console.log('🗑️ Expenses após deletar:', viewModel.expenses);
       
       toast({
         title: "Gasto removido",
@@ -151,27 +141,17 @@ export const ExpenseManagement = ({ people, onBack, onContinue, template }: Expe
             <h3 className="text-lg font-semibold text-gray-900">Lista de Gastos ({expenses.length} itens)</h3>
             <div className="space-y-3">
               {expenses.map((expense, index) => {
-                console.log(`🧾 Renderizando expense #${index}:`, expense);
-                console.log(`🧾 Expense ID: ${expense.id}, amount: ${expense.amount}, type: ${typeof expense.amount}`);
-                
-                // Verificação de segurança para IDs únicos
-                if (!expense.id) {
-                  console.error('⚠️ Expense sem ID encontrado:', expense);
-                  return null;
-                }
+                console.log(`🧾 Renderizando expense válido #${index}:`, expense);
                 
                 return (
-                  <div key={`expense-${expense.id}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium text-gray-700">{expense.description || 'Descrição não informada'}</p>
-                      <p className="text-sm text-gray-500">{expense.category || 'Categoria não informada'}</p>
+                      <p className="font-medium text-gray-700">{expense.description}</p>
+                      <p className="text-sm text-gray-500">{expense.category}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-700">
-                        {expense.amount !== undefined && expense.amount !== null && !isNaN(expense.amount) 
-                          ? viewModel.formatCurrency(expense.amount)
-                          : `Valor inválido (${expense.amount})`
-                        }
+                        {viewModel.formatCurrency(expense.amount)}
                       </p>
                       <Button 
                         variant="ghost" 
