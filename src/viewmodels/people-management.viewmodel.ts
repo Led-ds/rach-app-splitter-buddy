@@ -69,6 +69,9 @@ export class PeopleManagementViewModel {
         color: this.getRandomColor()
       };
 
+      console.log('📋 Dados sendo enviados para o backend:', personRequest);
+      console.log('🌐 URL do endpoint:', '/people');
+      
       const newPerson = await personService.createPerson(personRequest);
       console.log('✅ Pessoa criada:', newPerson);
       
@@ -78,6 +81,14 @@ export class PeopleManagementViewModel {
       
     } catch (error) {
       console.error('❌ Erro ao adicionar pessoa:', error);
+      console.error('📝 Detalhes do erro:', {
+        message: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : null,
+        dados: {
+          nome: this._newPersonName.trim(),
+          cor: this.getRandomColor()
+        }
+      });
       throw error;
     } finally {
       this._isLoading = false;

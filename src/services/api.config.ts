@@ -39,7 +39,8 @@ export class ApiClient {
 
     try {
       console.log('🌐 Fazendo requisição para:', url);
-      console.log('📝 Config:', config);
+      console.log('📝 Config completo:', config);
+      console.log('📦 Body da requisição:', config.body);
       
       const response = await fetch(url, config);
       
@@ -47,7 +48,16 @@ export class ApiClient {
       console.log('📋 Headers da resposta:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Tentar capturar o corpo da resposta de erro
+        let errorBody = '';
+        try {
+          errorBody = await response.text();
+          console.error('💥 Corpo da resposta de erro:', errorBody);
+        } catch (e) {
+          console.error('❌ Não foi possível ler o corpo do erro');
+        }
+        
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
       }
       
       // Verificar se há conteúdo para parsear
@@ -58,12 +68,13 @@ export class ApiClient {
         return result;
       } else {
         console.log('ℹ️ Resposta sem JSON, retornando vazio');
-        return [] as T; // Para casos onde não há conteúdo JSON
+        return [] as T;
       }
       
     } catch (error) {
       console.error('❌ Erro na requisição API:', error);
       console.error('🔗 URL:', url);
+      console.error('⚙️ Configuração:', config);
       throw error;
     }
   }
